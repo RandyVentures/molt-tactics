@@ -55,6 +55,7 @@ POST /api/submit
 - Diplomacy + reputation rules in `specs/diplomacy.md`.
 - Deployment runbook in `DEPLOY.md`.
 - Skill manifest in `skill/SKILL.md`.
+- Skill heartbeat in `skill/HEARTBEAT.md`.
 
 ## Server (MVP)
 ```

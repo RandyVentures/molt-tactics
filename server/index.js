@@ -20,6 +20,9 @@ const MATCH_CAPACITY = 8;
 const MIN_PLAYERS = 2;
 const AUTH_DISABLED = process.env.AUTH_DISABLED === "1";
 const DEBUG_TICKS = process.env.DEBUG_TICKS === "1";
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const RATE_LIMIT_MAX = 120;
+const MESSAGE_MAX_LEN = 200;
 
 const matches = new Map();
 const USE_SQLITE = process.env.USE_SQLITE === "1";
@@ -27,6 +30,7 @@ const db = USE_SQLITE ? initDb() : null;
 const agentStats = USE_SQLITE ? loadAgentsFromDb(db) : loadAgents();
 const seasonStats = USE_SQLITE ? null : loadSeasonStats();
 let matchCounter = 1;
+const rateBuckets = new Map();
 
 const classes = {
   warrior: { hp: 12, armor: 2, damage: 2, range: 1, ability: "guard", cd: 3 },
@@ -462,6 +466,23 @@ function json(res, status, body) {
   res.end(data);
 }
 
+function rateKey(req, agentId) {
+  const ip = (req.headers["x-forwarded-for"] || req.socket.remoteAddress || "").toString();
+  return `${agentId || "anon"}:${ip}`;
+}
+
+function rateLimit(req, agentId) {
+  const key = rateKey(req, agentId);
+  const now = Date.now();
+  let bucket = rateBuckets.get(key);
+  if (!bucket || now - bucket.start > RATE_LIMIT_WINDOW_MS) {
+    bucket = { start: now, count: 0 };
+    rateBuckets.set(key, bucket);
+  }
+  bucket.count += 1;
+  return bucket.count <= RATE_LIMIT_MAX;
+}
+
 function applyElo(match, winner) {
   const participants = Array.from(match.agents.values());
   if (participants.length < 2) return;
@@ -553,6 +574,10 @@ function hmacValid(req, body, agent) {
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
+
+  if (!rateLimit(req, req.headers["x-agent-id"])) {
+    return json(res, 429, { error: "rate_limited" });
+  }
 
   if (req.method === "OPTIONS") {
     res.writeHead(204, {
@@ -655,9 +680,13 @@ const server = http.createServer(async (req, res) => {
     if (!hmacValid(req, body, agent)) return json(res, 401, { error: "invalid_signature" });
     if (body.turn !== match.turn) return json(res, 400, { error: "stale_turn" });
     const action = body.action || { type: "defend" };
+    const message =
+      typeof body.message === "string"
+        ? body.message.slice(0, MESSAGE_MAX_LEN)
+        : undefined;
     match.pending.set(agent.agentId, {
       ...action,
-      message: body.message,
+      message,
       contract_offer: body.contract_offer,
       contract_accept: body.contract_accept
     });

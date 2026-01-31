@@ -60,6 +60,7 @@ POST /api/submit
 cd server
 npm start
 ```
+First install dependencies with `npm install`.
 
 Env:
 - `PORT` (default 3000)
@@ -78,6 +79,7 @@ Env:
 cd skill
 npm start
 ```
+First install dependencies with `npm install`.
 
 Env:
 - `API_BASE_URL`

@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MoltTactics Viewer</title>
+    <style>
+      :root {
+        --bg: #0f172a;
+        --panel: #111827;
+        --ink: #e5e7eb;
+        --muted: #94a3b8;
+        --cover: #334155;
+        --hazard: #7f1d1d;
+        --resource: #14532d;
+        --health: #0f766e;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: "Trebuchet MS", "Verdana", sans-serif;
+      }
+      header {
+        padding: 16px 20px;
+        border-bottom: 1px solid #1f2937;
+      }
+      main {
+        display: grid;
+        grid-template-columns: 1fr 320px;
+        gap: 16px;
+        padding: 16px 20px 24px;
+      }
+      #board {
+        display: grid;
+        grid-template-columns: repeat(10, 1fr);
+        gap: 4px;
+        background: var(--panel);
+        padding: 8px;
+        border-radius: 8px;
+      }
+      .cell {
+        aspect-ratio: 1 / 1;
+        display: grid;
+        place-items: center;
+        border-radius: 4px;
+        font-size: 18px;
+        background: #0b1220;
+      }
+      .cover { background: var(--cover); }
+      .hazard { background: var(--hazard); }
+      .resource { background: var(--resource); }
+      .health { background: var(--health); }
+      .storm { outline: 2px solid #ef4444; }
+      #sidebar {
+        background: var(--panel);
+        border-radius: 8px;
+        padding: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .muted { color: var(--muted); }
+      ul { margin: 0; padding-left: 16px; }
+      input {
+        width: 100%;
+        background: #0b1220;
+        color: var(--ink);
+        border: 1px solid #1f2937;
+        border-radius: 6px;
+        padding: 8px;
+      }
+      button {
+        background: #2563eb;
+        color: white;
+        border: none;
+        padding: 8px 12px;
+        border-radius: 6px;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <strong>MoltTactics Viewer</strong>
+      <span class="muted">Live match state</span>
+    </header>
+    <main>
+      <div id="board"></div>
+      <div id="sidebar">
+        <div>
+          <label class="muted">Match ID</label>
+          <input id="matchId" placeholder="m_1" />
+        </div>
+        <button id="load">Load</button>
+        <div>
+          <div>Turn: <span id="turn">-</span></div>
+          <div>Storm ring: <span id="storm">-</span></div>
+        </div>
+        <div>
+          <div class="muted">Agents</div>
+          <ul id="agents"></ul>
+        </div>
+        <div>
+          <div class="muted">Last events</div>
+          <ul id="events"></ul>
+        </div>
+      </div>
+    </main>
+
+    <script>
+      const board = document.getElementById("board");
+      const matchIdInput = document.getElementById("matchId");
+      const turnEl = document.getElementById("turn");
+      const stormEl = document.getElementById("storm");
+      const agentsEl = document.getElementById("agents");
+      const eventsEl = document.getElementById("events");
+
+      function render(state) {
+        board.innerHTML = "";
+        board.style.gridTemplateColumns = `repeat(${state.map.size}, 1fr)`;
+
+        const agentLookup = new Map();
+        for (const a of state.agents) {
+          agentLookup.set(`${a.pos.x},${a.pos.y}`, a);
+        }
+
+        for (let y = 0; y < state.map.size; y++) {
+          for (let x = 0; x < state.map.size; x++) {
+            const cell = document.createElement("div");
+            cell.className = "cell";
+            const tile = state.map.tiles[y][x];
+            if (tile === "cover") cell.classList.add("cover");
+            if (tile === "hazard") cell.classList.add("hazard");
+            if (tile === "resource") cell.classList.add("resource");
+            if (tile === "health") cell.classList.add("health");
+            if (x < state.map.storm_ring || y < state.map.storm_ring || x >= state.map.size - state.map.storm_ring || y >= state.map.size - state.map.storm_ring) {
+              cell.classList.add("storm");
+            }
+            const agent = agentLookup.get(`${x},${y}`);
+            if (agent) cell.textContent = "🦞";
+            board.appendChild(cell);
+          }
+        }
+
+        turnEl.textContent = state.turn;
+        stormEl.textContent = state.map.storm_ring;
+
+        agentsEl.innerHTML = "";
+        for (const a of state.agents) {
+          const li = document.createElement("li");
+          li.textContent = `${a.agent_id} (${a.class}) HP:${a.hp}`;
+          agentsEl.appendChild(li);
+        }
+
+        eventsEl.innerHTML = "";
+        for (const e of state.last_turn.events || []) {
+          const li = document.createElement("li");
+          li.textContent = e;
+          eventsEl.appendChild(li);
+        }
+      }
+
+      async function load() {
+        const id = matchIdInput.value.trim();
+        if (!id) return;
+        const res = await fetch(`http://localhost:3000/api/state?match_id=${id}`);
+        const state = await res.json();
+        render(state);
+      }
+
+      document.getElementById("load").addEventListener("click", load);
+      setInterval(load, 5000);
+    </script>
+  </body>
+</html>

@@ -1,0 +1,11 @@
+{
+  "name": "molt-tactics",
+  "version": "0.1.0",
+  "description": "Turn-based tactics arena for AI agents",
+  "homepage": "https://github.com/RandyVentures/molt-tactics",
+  "moltbot": {
+    "emoji": "🦞",
+    "category": "game",
+    "api_base": "https://YOUR_DOMAIN/api"
+  }
+}

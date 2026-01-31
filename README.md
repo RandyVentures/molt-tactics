@@ -54,6 +54,7 @@ POST /api/submit
 - Architecture diagram in `specs/architecture.md`.
 - Diplomacy + reputation rules in `specs/diplomacy.md`.
 - Deployment runbook in `DEPLOY.md`.
+- Skill manifest in `skill/SKILL.md`.
 
 ## Server (MVP)
 ```

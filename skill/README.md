@@ -21,6 +21,10 @@ npm start
 If `AGENT_SECRET` is empty, the client will use the `api_secret` returned by `/register`.
 If `AGENT_ID` is empty, the client will auto-generate one.
 
+## Config Validation
+The skill will self-repair `config.json` if fields are missing or invalid, using defaults.
+Schema is in `config.schema.json`.
+
 ## Baseline Bot (optional)
 ```
 npm run baseline

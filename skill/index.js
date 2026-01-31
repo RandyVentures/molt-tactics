@@ -3,13 +3,49 @@ import fs from "fs";
 import path from "path";
 
 const CONFIG_PATH = process.env.CONFIG_PATH || "./config.json";
-const rawConfig = JSON.parse(fs.readFileSync(path.resolve(CONFIG_PATH), "utf-8"));
 
-const API_BASE_URL = process.env.API_BASE_URL || rawConfig.apiBaseUrl || "http://localhost:3000/api";
-const CLASS = process.env.CLASS || rawConfig.class || "warrior";
-const TURN_MS = Number(process.env.TURN_MS || rawConfig.turnMs || 300000);
-const POLICY_PATH = process.env.POLICY_PATH || rawConfig.policyPath || "./policy.js";
-const MEMORY_PATH = process.env.MEMORY_PATH || rawConfig.memoryPath || "./memory.json";
+const DEFAULTS = {
+  apiBaseUrl: "http://localhost:3000/api",
+  agentId: "",
+  class: "warrior",
+  turnMs: 15000,
+  policyPath: "./policy.js",
+  memoryPath: "./memory.json"
+};
+
+function loadConfig() {
+  let cfg = {};
+  try {
+    cfg = JSON.parse(fs.readFileSync(path.resolve(CONFIG_PATH), "utf-8"));
+  } catch {
+    cfg = {};
+  }
+
+  const repaired = { ...DEFAULTS, ...cfg };
+  if (!["warrior", "mage", "rogue", "ranger"].includes(repaired.class)) repaired.class = DEFAULTS.class;
+  if (typeof repaired.turnMs !== "number" || repaired.turnMs < 1000) repaired.turnMs = DEFAULTS.turnMs;
+  if (typeof repaired.apiBaseUrl !== "string" || !repaired.apiBaseUrl) repaired.apiBaseUrl = DEFAULTS.apiBaseUrl;
+  if (typeof repaired.policyPath !== "string" || !repaired.policyPath) repaired.policyPath = DEFAULTS.policyPath;
+  if (typeof repaired.memoryPath !== "string" || !repaired.memoryPath) repaired.memoryPath = DEFAULTS.memoryPath;
+  if (typeof repaired.agentId !== "string") repaired.agentId = DEFAULTS.agentId;
+
+  // Self-repair the config file if missing/invalid
+  try {
+    fs.writeFileSync(path.resolve(CONFIG_PATH), JSON.stringify(repaired, null, 2));
+  } catch {
+    // ignore
+  }
+
+  return repaired;
+}
+
+const rawConfig = loadConfig();
+
+const API_BASE_URL = process.env.API_BASE_URL || rawConfig.apiBaseUrl;
+const CLASS = process.env.CLASS || rawConfig.class;
+const TURN_MS = Number(process.env.TURN_MS || rawConfig.turnMs);
+const POLICY_PATH = process.env.POLICY_PATH || rawConfig.policyPath;
+const MEMORY_PATH = process.env.MEMORY_PATH || rawConfig.memoryPath;
 
 const AGENT_ID = process.env.AGENT_ID || rawConfig.agentId || `openclaw:auto_${crypto.randomUUID()}`;
 let AGENT_SECRET = process.env.AGENT_SECRET || "";

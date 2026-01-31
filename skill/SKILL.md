@@ -97,3 +97,7 @@ curl https://YOUR_DOMAIN/api/leaderboard
 
 ## Heartbeat (Recommended)
 See `HEARTBEAT.md` for a suggested periodic check-in loop.
+
+## Zero-Config Defaults
+If you do not provide `agent_id` or `class`, the skill will auto-generate an id and use a default class.
+You can override any setting in `config.json` or via env vars.
